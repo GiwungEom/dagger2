@@ -2,7 +2,9 @@ package com.test.tutorsgear.dagger2test.tasks;
 
 import android.content.Intent;
 import android.support.annotation.NonNull;
+import android.support.annotation.VisibleForTesting;
 import android.support.design.widget.NavigationView;
+import android.support.test.espresso.IdlingResource;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
@@ -11,13 +13,16 @@ import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 
 import com.test.tutorsgear.dagger2test.R;
+import com.test.tutorsgear.dagger2test.ToDoApplication;
 import com.test.tutorsgear.dagger2test.statistics.StatisticsActivity;
 import com.test.tutorsgear.dagger2test.util.ActivityUtils;
 
 
 public class TasksActivity extends AppCompatActivity {
 
+    private static final String CURRENT_FILTERING_KEY = "CURRENT_FILTERING_KEY";
     private DrawerLayout mDrawerLayout;
+    private TasksPresenter mTasksPresenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,8 +55,24 @@ public class TasksActivity extends AppCompatActivity {
         }
 
         // Create the Presenter
+        DaggerTasksComponent.builder()
+                .tasksRepositoryComponent(((ToDoApplication) getApplication()).getTasksRepositoryComponent())
+                .tasksPresenterModule(new TasksPresenterModule(tasksFragment)).build()
+                .inject(this);
 
+        // Load previously saved state, if available.
+        if (savedInstanceState != null) {
+            TasksFilterType currentFiltering =
+                    (TasksFilterType) savedInstanceState.getSerializable(CURRENT_FILTERING_KEY);
+            mTasksPresenter.setFiltering(currentFiltering);
+        }
+    }
 
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        outState.putSerializable(CURRENT_FILTERING_KEY, mTasksPresenter.getFiltering());
+
+        super.onSaveInstanceState(outState);
     }
 
     private void setupDrawerContent(NavigationView navigationView) {
@@ -80,7 +101,5 @@ public class TasksActivity extends AppCompatActivity {
                 return false;
             }
         });
-
-
     }
 }
